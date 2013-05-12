@@ -30,13 +30,19 @@
 
 /*****************************************************************************/
 
+template <typename T>
+static inline T min(T a, T b) {
+    return a<b ? a : b;
+}
+
 struct input_event;
 
 InputEventCircularReader::InputEventCircularReader(size_t numEvents)
-    : mBuffer(new input_event[numEvents * 2]),
+    : mBuffer(new input_event[numEvents]),
       mBufferEnd(mBuffer + numEvents),
       mHead(mBuffer),
       mCurr(mBuffer),
+      mEvents(numEvents),
       mFreeSpace(numEvents)
 {
 }
@@ -50,32 +56,49 @@ ssize_t InputEventCircularReader::fill(int fd)
 {
     size_t numEventsRead = 0;
     if (mFreeSpace) {
-        const ssize_t nread = read(fd, mHead, mFreeSpace * sizeof(input_event));
-        if (nread<0 || nread % sizeof(input_event)) {
+        struct iovec iov[2];
+
+        const size_t numFirst = min(mFreeSpace, (size_t)(mBufferEnd - mHead));
+        const size_t numSecond = mFreeSpace - numFirst;
+
+        int iovcnt = 1;
+        iov[0].iov_base = mHead;
+        iov[0].iov_len = numFirst * sizeof(input_event);
+
+        if (numSecond > 0)
+        {
+            iovcnt++;
+            iov[1].iov_base = mBuffer;
+            iov[1].iov_len = numSecond * sizeof(input_event);
+        }
+
+        const ssize_t nread = readv(fd, iov, iovcnt);
+        if (nread < 0 || nread % sizeof(input_event)) {
             // we got a partial event!!
-            return nread<0 ? -errno : -EINVAL;
+            return nread < 0 ? -errno : -EINVAL;
         }
 
         numEventsRead = nread / sizeof(input_event);
         if (numEventsRead) {
             mHead += numEventsRead;
             mFreeSpace -= numEventsRead;
-            if (mHead > mBufferEnd) {
-                size_t s = mHead - mBufferEnd;
-                memcpy(mBuffer, mBufferEnd, s * sizeof(input_event));
-                mHead = mBuffer + s;
-            }
+            if (mHead >= mBufferEnd)
+                mHead -= mBufferEnd - mBuffer;
         }
     }
 
     return numEventsRead;
 }
 
-ssize_t InputEventCircularReader::readEvent(input_event const** events)
+bool InputEventCircularReader::readEvent(int fd, input_event const** events)
 {
+    if (mFreeSpace >= mEvents) {
+        ssize_t eventCount = fill(fd);
+        if (eventCount <= 0)
+            return false;
+    }
     *events = mCurr;
-    ssize_t available = (mBufferEnd - mBuffer) - mFreeSpace;
-    return available ? 1 : 0;
+    return true;
 }
 
 void InputEventCircularReader::next()

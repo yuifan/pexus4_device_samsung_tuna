@@ -43,10 +43,12 @@
 #$(call add-clean-step, rm -rf $(OUT_DIR)/target/common/obj/JAVA_LIBRARIES/core_intermediates)
 #$(call add-clean-step, find $(OUT_DIR) -type f -name "IGTalkSession*" -print0 | xargs -0 rm -f)
 #$(call add-clean-step, rm -rf $(PRODUCT_OUT)/data/*)
-$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES/gps.mahimahi_intermediates)
-$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/SHARED_LIBRARIES/libgps-rpc_intermediates)
-
 
 # ************************************************
 # NEWER CLEAN STEPS MUST BE AT THE END OF THE LIST
 # ************************************************
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/root/default.prop)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/obj/APPS/phone_intermediates)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/etc/updatecmds/migrate_nfc.txt)
+$(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/lib/hw/keystore.tuna.so)
+$(call add-clean-step, rm -f $(TARGET_OUT)/build.prop)
